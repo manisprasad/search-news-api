@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
-// const axiosRetry = require('axios-retry');
+const axiosRetry = require('axios-retry');
 
 const PORT = process.env.PORT || 3000;
 
@@ -12,16 +12,16 @@ const app = express();
 app.use(cors());
 
 // Configure axios to use axios-retry
-// axiosRetry(axios, {
-//     retries: 3, // Number of retries
-//     retryDelay: (retryCount) => {
-//         return retryCount * 2000; // Time interval between retries in milliseconds
-//     },
-//     retryCondition: (error) => {
-//         // Retry on network errors and 5xx server errors
-//         return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
-//     },
-// });
+axiosRetry(axios, {
+    retries: 3, // Number of retries
+    retryDelay: (retryCount) => {
+        return retryCount * 2000; // Time interval between retries in milliseconds
+    },
+    retryCondition: (error) => {
+        // Retry on network errors and 5xx server errors
+        return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
+    },
+});
 
 // Define selectors for elements on the Google News page
 const selectors = {
@@ -32,6 +32,17 @@ const selectors = {
     websiteName: 'div.vr1PYe',
     companyImage: 'img',
     time: 'time'
+};
+
+// Function to fetch the final URL after redirections
+const fetchFinalUrl = async (url) => {
+    try {
+        const response = await axios.get(url, { maxRedirects: 5 });
+        return response.request.res.responseUrl;
+    } catch (error) {
+        console.error(`Error fetching final URL for ${url}:`, error);
+        return url; // Fallback to the original URL if there's an error
+    }
 };
 
 // Function to fetch crypto news from Google News
@@ -45,11 +56,12 @@ const getCryptoNews = async (query) => {
         const $ = cheerio.load(response.data);
         
         // Extracting information for each news article
-        $(selectors.article).each((index, element) => {
+        const promises = $(selectors.article).map(async (index, element) => {
             const title = $(element).find(selectors.title).text() || null;
             const url = 'https://news.google.com' + $(element).find(selectors.title).attr('href').substring(1);
             const publishedBy = $(element).find(selectors.publishedBy).text() || null;
-            const newsImage = 'https://news.google.com' + $(element).find(selectors.newsImage).attr('src') || null;
+            const newsImageUrl = 'https://news.google.com' + $(element).find(selectors.newsImage).attr('src') || null;
+            const newsImage = await fetchFinalUrl(newsImageUrl); // Fetch final URL after redirections
             const websiteName = $(element).find(selectors.websiteName).text() || null;
             const companyImage = $(element).find(selectors.companyImage).attr('src') || null;
             const time = $(element).find(selectors.time).attr('datetime') || null;
@@ -65,9 +77,13 @@ const getCryptoNews = async (query) => {
                 publishedBy,
                 time
             });
-        });
+        }).get();
+
+        await Promise.all(promises); // Wait for all promises to resolve
+
     } catch (error) {
         console.error('Error getting news from website:', error);
+        throw new Error('Failed to fetch news data'); // Better error handling
     }
     return { newsArray, totalNews };
 }
@@ -102,4 +118,3 @@ app.get('/:coinName', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-
