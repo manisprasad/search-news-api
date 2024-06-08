@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const cors = require('cors');
-const axiosRetry = require('axios-retry');
+// const axiosRetry = require('axios-retry');
 
 const PORT = process.env.PORT || 3000;
 
@@ -12,16 +12,16 @@ const app = express();
 app.use(cors());
 
 // Configure axios to use axios-retry
-axiosRetry(axios, {
-    retries: 3, // Number of retries
-    retryDelay: (retryCount) => {
-        return retryCount * 2000; // Time interval between retries in milliseconds
-    },
-    retryCondition: (error) => {
-        // Retry on network errors and 5xx server errors
-        return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
-    },
-});
+// axiosRetry(axios, {
+//     retries: 3, // Number of retries
+//     retryDelay: (retryCount) => {
+//         return retryCount * 2000; // Time interval between retries in milliseconds
+//     },
+//     retryCondition: (error) => {
+//         // Retry on network errors and 5xx server errors
+//         return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
+//     },
+// });
 
 // Define selectors for elements on the Google News page
 const selectors = {
