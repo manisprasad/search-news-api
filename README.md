@@ -1,1 +1,2 @@
-# search-news-api
+# news-api
+# search-news
